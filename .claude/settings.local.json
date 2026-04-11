@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(curl -s --compressed 'https://site.web.api.espn.com/apis/common/v3/sports/mma/athletes/3088812')",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}
