@@ -1,6 +1,6 @@
 import { generateText, stepCountIs } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { tools } from './tools';
+import { getTools } from './tools';
 import { postMessage, updateMessage, getThreadMessages, SlackMessage } from './slack';
 
 const SYSTEM_PROMPT = `
@@ -19,6 +19,7 @@ interface Env {
 	SLACK_BOT_TOKEN: string;
 	OPENROUTER_API_KEY: string;
 	MODEL_ID: string;
+	FIGHTERS_KV: KVNamespace;
 }
 
 function convertToMessages(slackMessages: SlackMessage[], botUserId: string): { role: 'user' | 'assistant'; content: string }[] {
@@ -54,6 +55,8 @@ export async function handleMention(
 
 		// Always append the current user message
 		messages.push({ role: 'user', content: userText });
+
+		const tools = getTools(env);
 
 		const result = await generateText({
 			model: openrouter(env.MODEL_ID),

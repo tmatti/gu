@@ -47,6 +47,15 @@ npm run test      # run tests
 npx tsc --noEmit  # type check
 ```
 
+### Testing locally
+`curl -X POST http://localhost:8787/admin/refresh-cache`
+this will hit the real ESPN API and populate local KV -- it takes a few mins
+
+Then test a fighter lookup via a mock Slack event:
+curl -X POST http://localhost:8787/slack/events \
+  -H "Content-Type: application/json" \
+  -d '{"type":"url_verification","challenge":"test123"}'
+
 ## Configuration
 
 | Variable | Where | Description |

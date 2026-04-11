@@ -9,4 +9,11 @@
 	"vars": {
 		"MODEL_ID": "anthropic/claude-sonnet-4-20250514",
 	},
+	"kv_namespaces": [
+		{
+			"binding": "FIGHTERS_KV",
+			"id": "48e3b8f2ab0241a7be69927bb69274c3",
+			"preview_id": "142e1691d1e9409c8fc8a4462dc4fbc8",
+		},
+	],
 }

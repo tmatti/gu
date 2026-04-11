@@ -1,17 +1,24 @@
 import { Hono } from "hono";
 import { verifySlackSignature } from "./slack";
 import { handleMention } from "./agent";
+import { buildAthleteCache } from "./espn";
 
 type Bindings = {
   SLACK_SIGNING_SECRET: string;
   SLACK_BOT_TOKEN: string;
   OPENROUTER_API_KEY: string;
   MODEL_ID: string;
+  FIGHTERS_KV: KVNamespace;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.get("/health", (c) => c.json({ ok: true }));
+
+app.post("/admin/refresh-cache", async (c) => {
+  const result = await buildAthleteCache(c.env.FIGHTERS_KV);
+  return c.json({ ok: true, ...result });
+});
 
 app.post("/slack/events", async (c) => {
   // Ignore Slack retries to prevent duplicate responses
@@ -20,16 +27,6 @@ app.post("/slack/events", async (c) => {
   }
 
   const body = await c.req.text();
-
-  // Verify Slack signature
-  const valid = await verifySlackSignature(
-    c.req.raw,
-    body,
-    c.env.SLACK_SIGNING_SECRET
-  );
-  if (!valid) {
-    return c.json({ error: "invalid signature" }, 401);
-  }
 
   const payload = JSON.parse(body) as {
     type: string;
@@ -43,9 +40,19 @@ app.post("/slack/events", async (c) => {
     };
   };
 
-  // Handle Slack's URL verification challenge
+  // Handle Slack's URL verification challenge (no signature needed)
   if (payload.type === "url_verification") {
     return c.json({ challenge: payload.challenge });
+  }
+
+  // Verify Slack signature for all other requests
+  const valid = await verifySlackSignature(
+    c.req.raw,
+    body,
+    c.env.SLACK_SIGNING_SECRET
+  );
+  if (!valid) {
+    return c.json({ error: "invalid signature" }, 401);
   }
 
   // Handle app_mention events
