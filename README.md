@@ -47,14 +47,25 @@ npm run test      # run tests
 npx tsc --noEmit  # type check
 ```
 
-### Testing locally
-`curl -X POST http://localhost:8787/admin/refresh-cache`
-this will hit the real ESPN API and populate local KV -- it takes a few mins
+### Populating the fighter cache
 
-Then test a fighter lookup via a mock Slack event:
+Run the local build script — it fetches all ~1800 athletes from ESPN and writes directly to Cloudflare KV in one pass.
+
+```sh
+npm run build-cache       # write to production KV
+npm run build-cache:dev   # write to preview KV (used by wrangler dev)
+```
+
+The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It takes a few minutes to run.
+
+### Testing locally
+
+Test a fighter lookup via a mock Slack event:
+```sh
 curl -X POST http://localhost:8787/slack/events \
   -H "Content-Type: application/json" \
   -d '{"type":"url_verification","challenge":"test123"}'
+```
 
 ## Configuration
 

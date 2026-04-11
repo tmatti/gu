@@ -99,11 +99,17 @@ export async function fetchAllAthleteIds(): Promise<string[]> {
   let totalPages = 1;
 
   do {
+    console.log(`[espn] fetching athlete list page ${page}/${totalPages}`);
     const res = await fetch(
       `${ESPN_CORE}/athletes?limit=100&page=${page}`
     );
+    if (!res.ok) {
+      console.error(`[espn] athlete list page ${page} failed: ${res.status} ${res.statusText}`);
+      break;
+    }
     const data = (await res.json()) as CoreAthleteListResponse;
     totalPages = data.pageCount;
+    console.log(`[espn] page ${page}/${totalPages}: ${data.items.length} refs, total athletes so far: ${ids.length}`);
 
     for (const item of data.items) {
       // Extract ID from $ref URL like "http://sports.core.api.espn.com/v2/sports/mma/athletes/12345?..."
@@ -114,13 +120,17 @@ export async function fetchAllAthleteIds(): Promise<string[]> {
     page++;
   } while (page <= totalPages);
 
+  console.log(`[espn] fetchAllAthleteIds complete: ${ids.length} total IDs`);
   return ids;
 }
 
 export async function fetchAthleteDetail(id: string): Promise<AthleteData | null> {
   try {
     const res = await fetch(`${ESPN_WEB}/${id}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[espn] athlete ${id} returned ${res.status} ${res.statusText}`);
+      return null;
+    }
     const data = (await res.json()) as WebAthleteResponse;
     const a = data.athlete;
 
@@ -141,34 +151,12 @@ export async function fetchAthleteDetail(id: string): Promise<AthleteData | null
       country: a.flag?.description ?? "",
       active: a.active ?? false,
     };
-  } catch {
+  } catch (err) {
+    console.error(`[espn] fetchAthleteDetail(${id}) threw: ${err}`);
     return null;
   }
 }
 
-export async function buildAthleteCache(
-  kv: KVNamespace
-): Promise<{ count: number }> {
-  const ids = await fetchAllAthleteIds();
-  const nameIndex: NameIndexEntry[] = [];
-  let count = 0;
-
-  // Process in batches of 10 to avoid overwhelming ESPN
-  for (let i = 0; i < ids.length; i += 10) {
-    const batch = ids.slice(i, i + 10);
-    const results = await Promise.all(batch.map(fetchAthleteDetail));
-
-    for (const athlete of results) {
-      if (!athlete || !athlete.name) continue;
-      await kv.put(`athlete:${athlete.id}`, JSON.stringify(athlete));
-      nameIndex.push({ id: athlete.id, name: athlete.name });
-      count++;
-    }
-  }
-
-  await kv.put("__name_index", JSON.stringify(nameIndex));
-  return { count };
-}
 
 export async function searchAthletes(
   kv: KVNamespace,

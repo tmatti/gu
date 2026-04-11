@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { verifySlackSignature } from "./slack";
 import { handleMention, handleDM } from "./agent";
-import { buildAthleteCache } from "./espn";
 
 type Bindings = {
   SLACK_SIGNING_SECRET: string;
@@ -14,11 +13,6 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.get("/health", (c) => c.json({ ok: true }));
-
-app.post("/admin/refresh-cache", async (c) => {
-  const result = await buildAthleteCache(c.env.FIGHTERS_KV);
-  return c.json({ ok: true, ...result });
-});
 
 app.post("/slack/events", async (c) => {
   // Ignore Slack retries to prevent duplicate responses
@@ -37,6 +31,7 @@ app.post("/slack/events", async (c) => {
       channel?: string;
       channel_type?: string;
       bot_id?: string;
+      subtype?: string;
       ts: string;
       thread_ts?: string;
     };
@@ -75,7 +70,8 @@ app.post("/slack/events", async (c) => {
     payload.type === "event_callback" &&
     payload.event?.type === "message" &&
     payload.event?.channel_type === "im" &&
-    !payload.event?.bot_id
+    !payload.event?.bot_id &&
+    !payload.event?.subtype
   ) {
     const event = payload.event;
     const text = (event.text ?? "").trim();

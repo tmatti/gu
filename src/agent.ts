@@ -3,8 +3,16 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { getTools } from './tools';
 import { postMessage, updateMessage, getThreadMessages, getDMHistory, SlackMessage } from './slack';
 
-const SYSTEM_PROMPT = `
+function buildSystemPrompt(): string {
+	const now = new Date().toLocaleString('en-US', {
+		timeZone: 'America/New_York',
+		dateStyle: 'full',
+		timeStyle: 'short',
+	});
+	return `
 You are an expert MMA analyst assistant in a Slack workspace. You have deep knowledge of UFC, Bellator, ONE Championship, and MMA in general.
+
+The current date and time is ${now} EST.
 
 You have tools to look up real-time data: fighter stats and records, upcoming/recent events, and division rankings.
 
@@ -14,6 +22,7 @@ Guidelines:
 - If asked about upcoming events or current rankings, always use a tool to fetch fresh data
 - Format responses in plain text (no markdown headers, minimal formatting — Slack renders it differently)
 - If you can't find data for something, say so clearly`;
+}
 
 interface Env {
 	SLACK_BOT_TOKEN: string;
@@ -62,7 +71,7 @@ export async function handleMention(
 			model: openrouter(env.MODEL_ID),
 			stopWhen: stepCountIs(5),
 			tools,
-			system: SYSTEM_PROMPT,
+			system: buildSystemPrompt(),
 			messages,
 		});
 
@@ -100,7 +109,7 @@ export async function handleDM(
 			model: openrouter(env.MODEL_ID),
 			stopWhen: stepCountIs(5),
 			tools,
-			system: SYSTEM_PROMPT,
+			system: buildSystemPrompt(),
 			messages,
 		});
 
