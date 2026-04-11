@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { verifySlackSignature } from "./slack";
-import { handleMention } from "./agent";
+import { handleMention, handleDM } from "./agent";
 import { buildAthleteCache } from "./espn";
 
 type Bindings = {
@@ -35,6 +35,8 @@ app.post("/slack/events", async (c) => {
       type: string;
       text?: string;
       channel?: string;
+      channel_type?: string;
+      bot_id?: string;
       ts: string;
       thread_ts?: string;
     };
@@ -65,6 +67,23 @@ app.post("/slack/events", async (c) => {
 
     c.executionCtx.waitUntil(
       handleMention(text, channel, eventTs, threadTs, c.env)
+    );
+  }
+
+  // Handle direct messages (message.im events)
+  if (
+    payload.type === "event_callback" &&
+    payload.event?.type === "message" &&
+    payload.event?.channel_type === "im" &&
+    !payload.event?.bot_id
+  ) {
+    const event = payload.event;
+    const text = (event.text ?? "").trim();
+    const channel = event.channel ?? "";
+    const eventTs = event.ts;
+
+    c.executionCtx.waitUntil(
+      handleDM(text, channel, eventTs, c.env)
     );
   }
 

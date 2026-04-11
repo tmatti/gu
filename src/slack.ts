@@ -84,6 +84,25 @@ export interface SlackMessage {
   ts: string;
 }
 
+export async function getDMHistory(
+  token: string,
+  channel: string
+): Promise<SlackMessage[]> {
+  const oldest = String(Math.floor(Date.now() / 1000) - 3600);
+  const params = new URLSearchParams({ channel, limit: "20", oldest });
+  const res = await fetch(`${SLACK_API}/conversations.history?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await res.json()) as {
+    ok: boolean;
+    messages?: SlackMessage[];
+    error?: string;
+  };
+  if (!data.ok) throw new Error(`conversations.history failed: ${data.error}`);
+  // API returns newest-first; reverse for chronological order
+  return (data.messages ?? []).reverse();
+}
+
 export async function getThreadMessages(
   token: string,
   channel: string,
