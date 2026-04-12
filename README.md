@@ -6,8 +6,8 @@ A Slack bot for MMA questions, deployed on Cloudflare Workers. Mention it in a c
 
 - **Runtime**: Cloudflare Workers (TypeScript)
 - **Router**: Hono
-- **LLM**: Vercel AI SDK + OpenRouter (`anthropic/claude-sonnet-4-20250514` by default)
-- **Data**: ESPN unofficial MMA API (stub tools — not yet wired up)
+- **LLM**: Vercel AI SDK + OpenRouter
+- **Data**: ESPN unofficial MMA API
 
 ## Setup
 
@@ -31,7 +31,7 @@ In [api.slack.com](https://api.slack.com):
 
 - **OAuth scopes**: `app_mentions:read`, `chat:write`, `channels:history`
 - **Event subscriptions URL**: `https://gu.<account>.workers.dev/slack/events`
-- **Subscribe to events**: `app_mention`
+- **Subscribe to events**: `app_mention`, `message.im`
 
 ### 4. Deploy
 
@@ -57,15 +57,6 @@ npm run build-cache:dev   # write to preview KV (used by wrangler dev)
 ```
 
 The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It takes a few minutes to run.
-
-### Testing locally
-
-Test a fighter lookup via a mock Slack event:
-```sh
-curl -X POST http://localhost:8787/slack/events \
-  -H "Content-Type: application/json" \
-  -d '{"type":"url_verification","challenge":"test123"}'
-```
 
 ## Configuration
 
