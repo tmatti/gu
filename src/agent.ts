@@ -45,6 +45,7 @@ interface Env {
 	OPENROUTER_API_KEY: string;
 	MODEL_ID: string;
 	FIGHTERS_KV: KVNamespace;
+	BRAVE_API_KEY: string;
 }
 
 function convertToMessages(slackMessages: SlackMessage[], botUserId: string): { role: 'user' | 'assistant'; content: string }[] {

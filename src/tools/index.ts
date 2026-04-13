@@ -3,8 +3,9 @@ import { type Tool } from 'ai';
 import { lookupFighter } from './fighters';
 import { lookupEvents } from './events';
 import { lookupRankings } from './rankings';
+import { webSearch } from './search';
 
-type Env = { FIGHTERS_KV: KVNamespace };
+type Env = { FIGHTERS_KV: KVNamespace; BRAVE_API_KEY: string };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function withLogging<T extends Tool<any, any>>(name: string, t: T): T {
@@ -25,5 +26,6 @@ export function getTools(env: Env) {
 		lookupFighter: withLogging('lookupFighter', lookupFighter(env)),
 		lookupEvents: withLogging('lookupEvents', lookupEvents()),
 		lookupRankings: withLogging('lookupRankings', lookupRankings()),
+		webSearch: withLogging('webSearch', webSearch(env)),
 	};
 }

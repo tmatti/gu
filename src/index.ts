@@ -8,6 +8,7 @@ type Bindings = {
   OPENROUTER_API_KEY: string;
   MODEL_ID: string;
   FIGHTERS_KV: KVNamespace;
+  BRAVE_API_KEY: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
