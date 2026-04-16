@@ -22,7 +22,7 @@
 	"dependencies": {
 		"@openrouter/ai-sdk-provider": "^2.5.1",
 		"ai": "^6.0.158",
-		"hono": "^4.12.12",
+		"hono": "^4.12.14",
 		"zod": "^3.25.76"
 	}
 }
