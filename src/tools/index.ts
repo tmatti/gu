@@ -4,6 +4,7 @@ import { lookupFighter } from './fighters';
 import { lookupEvents } from './events';
 import { lookupRankings } from './rankings';
 import { webSearch } from './search';
+import { readPage } from './readpage';
 
 type Env = { FIGHTERS_KV: KVNamespace; BRAVE_API_KEY: string };
 
@@ -27,5 +28,6 @@ export function getTools(env: Env) {
 		lookupEvents: withLogging('lookupEvents', lookupEvents()),
 		lookupRankings: withLogging('lookupRankings', lookupRankings()),
 		webSearch: withLogging('webSearch', webSearch(env)),
+		readPage: withLogging('readPage', readPage()),
 	};
 }

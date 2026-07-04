@@ -10,7 +10,8 @@ type Env = { FIGHTERS_KV: KVNamespace };
 
 export function lookupFighter(env: Env) {
 	return tool({
-		description: 'Look up a UFC/MMA fighter by name. Returns stats, record, weight class, and physical attributes.',
+		description:
+			'Quick stat lookup for a UFC fighter from a cached ESPN dataset: record, weight class, height, reach, stance, age. Data may be stale or missing. Never use for news, recent results, or analysis — use webSearch for those.',
 		inputSchema: schema,
 		execute: async (input) => {
 			const results = await searchAthletes(env.FIGHTERS_KV, input.name);

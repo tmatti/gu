@@ -8,7 +8,8 @@ const schema = z.object({
 
 export function lookupEvents() {
 	return tool({
-		description: 'Look up upcoming or past UFC/MMA events. Returns event name, date, location, and main card fights.',
+		description:
+			'Basic ESPN event data: name, date, venue, and fight card for the nearest UFC event, or calendar dates for a named event. Limited and may lag reality. For previews, results, or anything analytical, use webSearch instead.',
 		inputSchema: schema,
 		execute: async (input) => {
 			const data = await fetchScoreboard();

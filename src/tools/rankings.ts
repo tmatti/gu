@@ -25,7 +25,8 @@ const schema = z.object({
 
 export function lookupRankings() {
 	return tool({
-		description: 'Look up current UFC rankings for a weight class or pound-for-pound list.',
+		description:
+			"Look up UFC rankings for a weight class or pound-for-pound list, per ESPN. ESPN's rankings can lag the official UFC rankings — cross-check with webSearch if precision matters.",
 		inputSchema: schema,
 		execute: async (input) => {
 			const data = await fetchRankings();
