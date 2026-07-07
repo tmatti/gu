@@ -63,6 +63,7 @@ The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It ta
 | Variable | Where | Description |
 |---|---|---|
 | `MODEL_ID` | `wrangler.jsonc` `[vars]` | OpenRouter model ID |
+| `ANNOUNCE_CHANNEL_ID` | `wrangler.jsonc` `[vars]` | Slack channel ID for scheduled previews/recaps; empty disables them |
 | `SLACK_SIGNING_SECRET` | Wrangler secret | From Slack app settings |
 | `SLACK_BOT_TOKEN` | Wrangler secret | Bot OAuth token (`xoxb-...`) |
 | `OPENROUTER_API_KEY` | Wrangler secret | From openrouter.ai |
@@ -75,3 +76,12 @@ The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It ta
 4. The agent calls `generateText` with tool access (fighter lookup, events, rankings)
 5. The "thinking..." message is updated with the final response
 6. Thread context from prior messages is included for multi-turn conversations
+
+### Scheduled announcements
+
+Two Cloudflare Cron Triggers post to `ANNOUNCE_CHANNEL_ID` automatically:
+
+- `0 17 * * 6` — Saturday 17:00 UTC: fight-card preview for the upcoming event
+- `0 14 * * 0` — Sunday 14:00 UTC: results recap for the event that just happened
+
+Times are UTC and drift by 1h relative to US Eastern across DST (accepted). Leave `ANNOUNCE_CHANNEL_ID` empty to disable both. The bot must be invited to the channel for posting to work.
