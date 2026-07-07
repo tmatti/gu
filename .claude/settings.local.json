@@ -5,7 +5,12 @@
       "Bash(curl -s --compressed 'https://site.web.api.espn.com/apis/common/v3/sports/mma/athletes/3088812')",
       "Bash(python3 -m json.tool)",
       "Bash(git -C /Users/tim/dev/github/tmatti/gu checkout -b agent-tool-and-prompt-tuning)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(gh repo *)",
+      "Bash(gh issue *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(gh pr *)"
     ]
   }
 }
