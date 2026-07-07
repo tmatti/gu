@@ -1,0 +1,108 @@
+import { env, createExecutionContext } from 'cloudflare:test';
+import { describe, it, expect } from 'vitest';
+import { pickPreviewEvent, pickRecapEvent, handleScheduled } from '../src/announce';
+import type { ScoreboardEvent } from '../src/espn';
+
+const NOW = new Date('2026-07-07T12:00:00Z');
+
+function makeEvent(overrides: {
+	id?: string;
+	name?: string;
+	date: string;
+	completed?: boolean;
+}): ScoreboardEvent {
+	return {
+		id: overrides.id ?? '1',
+		name: overrides.name ?? 'UFC Test',
+		date: overrides.date,
+		competitions: [
+			{
+				status: overrides.completed === undefined ? undefined : { type: { completed: overrides.completed } },
+				competitors: [
+					{ order: 0, athlete: { displayName: 'Fighter A' } },
+					{ order: 1, athlete: { displayName: 'Fighter B' } },
+				],
+			},
+		],
+	};
+}
+
+function hoursFromNow(h: number): string {
+	return new Date(NOW.getTime() + h * 60 * 60 * 1000).toISOString();
+}
+
+describe('pickPreviewEvent', () => {
+	it('returns an event 12h in the future', () => {
+		const events = [makeEvent({ date: hoursFromNow(12) })];
+		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(12));
+	});
+
+	it('returns null for an event 5 days out', () => {
+		const events = [makeEvent({ date: hoursFromNow(24 * 5) })];
+		expect(pickPreviewEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns an event exactly at +36h (inclusive boundary)', () => {
+		const events = [makeEvent({ date: hoursFromNow(36) })];
+		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(36));
+	});
+
+	it('returns null for a past event', () => {
+		const events = [makeEvent({ date: hoursFromNow(-12) })];
+		expect(pickPreviewEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns null for an empty list', () => {
+		expect(pickPreviewEvent([], NOW)).toBeNull();
+	});
+
+	it('returns the first matching event', () => {
+		const events = [makeEvent({ id: 'a', date: hoursFromNow(10) }), makeEvent({ id: 'b', date: hoursFromNow(20) })];
+		expect(pickPreviewEvent(events, NOW)?.id).toBe('a');
+	});
+});
+
+describe('pickRecapEvent', () => {
+	it('returns a past event 12h ago with a completed competition', () => {
+		const events = [makeEvent({ date: hoursFromNow(-12), completed: true })];
+		expect(pickRecapEvent(events, NOW)?.date).toBe(hoursFromNow(-12));
+	});
+
+	it('returns null for a past event with no completed competitions', () => {
+		const events = [makeEvent({ date: hoursFromNow(-12), completed: false })];
+		expect(pickRecapEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns null when competition has no status', () => {
+		const events = [makeEvent({ date: hoursFromNow(-12) })];
+		expect(pickRecapEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns null for future-only events', () => {
+		const events = [makeEvent({ date: hoursFromNow(12), completed: true })];
+		expect(pickRecapEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns an event exactly at -36h with a completed fight (inclusive boundary)', () => {
+		const events = [makeEvent({ date: hoursFromNow(-36), completed: true })];
+		expect(pickRecapEvent(events, NOW)?.date).toBe(hoursFromNow(-36));
+	});
+
+	it('returns null for an event more than 36h ago', () => {
+		const events = [makeEvent({ date: hoursFromNow(-48), completed: true })];
+		expect(pickRecapEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns null for an empty list', () => {
+		expect(pickRecapEvent([], NOW)).toBeNull();
+	});
+});
+
+describe('handleScheduled', () => {
+	it('short-circuits when no channel is configured', async () => {
+		const ctx = createExecutionContext();
+		await expect(
+			handleScheduled({ cron: '0 17 * * 6' } as ScheduledController, { ...env, ANNOUNCE_CHANNEL_ID: '' } as never, ctx),
+		).resolves.toBeUndefined();
+	});
+});

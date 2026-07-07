@@ -63,6 +63,7 @@ interface ScoreboardResponse {
     venues?: { fullName: string; address?: { city?: string; country?: string } }[];
     competitions: {
       type?: { abbreviation: string };
+      status?: { type?: { state?: string; completed?: boolean } };
       competitors: {
         order: number;
         winner?: boolean;
@@ -72,6 +73,8 @@ interface ScoreboardResponse {
     }[];
   }[];
 }
+
+export type ScoreboardEvent = ScoreboardResponse['events'][number];
 
 interface RankingsResponse {
   rankings: {
@@ -181,8 +184,9 @@ export async function searchAthletes(
   return results.filter((r): r is AthleteData => r !== null);
 }
 
-export async function fetchScoreboard(): Promise<ScoreboardResponse> {
-  const res = await fetch(`${ESPN_SITE}/scoreboard`);
+export async function fetchScoreboard(dates?: string): Promise<ScoreboardResponse> {
+  const url = dates ? `${ESPN_SITE}/scoreboard?dates=${dates}` : `${ESPN_SITE}/scoreboard`;
+  const res = await fetch(url);
   return res.json() as Promise<ScoreboardResponse>;
 }
 
