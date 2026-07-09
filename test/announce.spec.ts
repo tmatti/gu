@@ -1,7 +1,8 @@
 import { env, createExecutionContext } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import { pickPreviewEvent, pickRecapEvent, handleScheduled } from '../src/announce';
+import { pickPreviewEvent, pickRecapEvent, handleScheduled, PREVIEW_CRON, RECAP_CRON } from '../src/announce';
 import type { ScoreboardEvent } from '../src/espn';
+import wranglerRaw from '../wrangler.jsonc?raw';
 
 const NOW = new Date('2026-07-07T12:00:00Z');
 
@@ -47,8 +48,18 @@ describe('pickPreviewEvent', () => {
 		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(36));
 	});
 
-	it('returns null for a past event', () => {
-		const events = [makeEvent({ date: hoursFromNow(-12) })];
+	it('returns an in-progress event that started 4h ago and is not fully completed', () => {
+		const events = [makeEvent({ date: hoursFromNow(-4), completed: false })];
+		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(-4));
+	});
+
+	it('returns null for a started event whose fights are all completed', () => {
+		const events = [makeEvent({ date: hoursFromNow(-4), completed: true })];
+		expect(pickPreviewEvent(events, NOW)).toBeNull();
+	});
+
+	it('returns null for a not-completed event that started 13h ago (beyond the 12h lookback)', () => {
+		const events = [makeEvent({ date: hoursFromNow(-13), completed: false })];
 		expect(pickPreviewEvent(events, NOW)).toBeNull();
 	});
 
@@ -101,8 +112,14 @@ describe('pickRecapEvent', () => {
 describe('handleScheduled', () => {
 	it('short-circuits when no channel is configured', async () => {
 		const ctx = createExecutionContext();
-		await expect(
-			handleScheduled({ cron: '0 17 * * 6' } as ScheduledController, { ...env, ANNOUNCE_CHANNEL_ID: '' } as never, ctx),
-		).resolves.toBeUndefined();
+		const testEnv = { ...env, ANNOUNCE_CHANNEL_ID: '' } as Parameters<typeof handleScheduled>[1];
+		await expect(handleScheduled({ cron: PREVIEW_CRON } as ScheduledController, testEnv, ctx)).resolves.toBeUndefined();
+	});
+});
+
+describe('cron config', () => {
+	it('wrangler.jsonc crons stay byte-identical to the dispatch constants', () => {
+		const json = JSON.parse(wranglerRaw.replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1'));
+		expect(json.triggers.crons).toEqual([PREVIEW_CRON, RECAP_CRON]);
 	});
 });

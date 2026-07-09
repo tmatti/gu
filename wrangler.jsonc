@@ -10,8 +10,10 @@
 		"MODEL_ID": "anthropic/claude-sonnet-4-5",
 		"ANNOUNCE_CHANNEL_ID": "",
 	},
+	// Cloudflare cron day-of-week is 1=Sunday..7=Saturday; day names avoid the ambiguity.
+	// Must stay byte-identical to PREVIEW_CRON/RECAP_CRON in src/announce.ts (dispatch matches the string).
 	"triggers": {
-		"crons": ["0 17 * * 6", "0 14 * * 0"],
+		"crons": ["0 17 * * SAT", "0 14 * * SUN"],
 	},
 	"kv_namespaces": [
 		{

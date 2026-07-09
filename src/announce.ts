@@ -5,10 +5,13 @@ import { postMessage } from './slack';
 import { buildSystemPrompt } from './agent';
 import { fetchScoreboard, ScoreboardEvent } from './espn';
 
-const PREVIEW_CRON = '0 17 * * 6'; // Saturday 17:00 UTC (~1pm ET)
-const RECAP_CRON = '0 14 * * 0'; // Sunday 14:00 UTC (~10am ET)
+// Cloudflare cron day-of-week is 1=Sunday..7=Saturday (not Unix 0-6); day names avoid the ambiguity.
+// Must stay byte-identical to triggers.crons in wrangler.jsonc — dispatch matches on the exact string.
+export const PREVIEW_CRON = '0 17 * * SAT'; // Saturday 17:00 UTC (~1pm ET)
+export const RECAP_CRON = '0 14 * * SUN'; // Sunday 14:00 UTC (~10am ET)
 
 const HOURS_36_MS = 36 * 60 * 60 * 1000;
+const PREVIEW_LOOKBACK_MS = 12 * 60 * 60 * 1000;
 
 interface Env {
 	SLACK_BOT_TOKEN: string;
@@ -21,13 +24,22 @@ interface Env {
 
 type AnnounceKind = 'preview' | 'recap';
 
-/** First event whose date is in the future and within the next 36h of `now` (inclusive at +36h). */
+/**
+ * First event within the next 36h of `now` (inclusive at +36h), or one that started within the past
+ * 12h and isn't fully completed — early international cards start before the cron fires and still
+ * deserve a preview while the card is live.
+ */
 export function pickPreviewEvent(events: ScoreboardEvent[], now: Date): ScoreboardEvent | null {
 	const nowMs = now.getTime();
 	for (const event of events) {
 		const eventMs = new Date(event.date).getTime();
 		if (Number.isNaN(eventMs)) continue;
 		if (eventMs > nowMs && eventMs - nowMs <= HOURS_36_MS) return event;
+		if (eventMs <= nowMs && nowMs - eventMs <= PREVIEW_LOOKBACK_MS) {
+			const fights = event.competitions ?? [];
+			const allDone = fights.length > 0 && fights.every((c) => c.status?.type?.completed === true);
+			if (!allDone) return event;
+		}
 	}
 	return null;
 }
@@ -55,6 +67,27 @@ function yyyymmdd(date: Date): string {
 	return `${y}${m}${d}`;
 }
 
+// The raw scoreboard event is ~65KB at runtime (broadcasts, links, uids...); project it down to the
+// fields the prompt actually needs before embedding it.
+function summarizeEvent(event: ScoreboardEvent) {
+	return {
+		name: event.name,
+		date: event.date,
+		venue: event.venues?.[0]?.fullName ?? null,
+		fights: (event.competitions ?? []).map((comp) => ({
+			weightClass: comp.type?.abbreviation ?? '',
+			completed: comp.status?.type?.completed ?? false,
+			fighters: [...comp.competitors]
+				.sort((x, y) => x.order - y.order)
+				.map((c) => ({
+					name: c.athlete.displayName,
+					record: c.records?.[0]?.summary ?? '',
+					winner: c.winner ?? false,
+				})),
+		})),
+	};
+}
+
 async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 	// Guard first, before any network call.
 	if (!env.ANNOUNCE_CHANNEL_ID) {
@@ -71,12 +104,8 @@ async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 			eventData = pickPreviewEvent(data.events ?? [], now);
 		} else {
 			const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-			const [a, b] = await Promise.all([fetchScoreboard(yyyymmdd(yesterday)), fetchScoreboard(yyyymmdd(now))]);
-			const byId = new Map<string, ScoreboardEvent>();
-			for (const event of [...(a.events ?? []), ...(b.events ?? [])]) {
-				if (!byId.has(event.id)) byId.set(event.id, event);
-			}
-			eventData = pickRecapEvent([...byId.values()], now);
+			const data = await fetchScoreboard(`${yyyymmdd(yesterday)}-${yyyymmdd(now)}`);
+			eventData = pickRecapEvent(data.events ?? [], now);
 		}
 
 		if (!eventData) {
@@ -85,7 +114,7 @@ async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 		}
 
 		// Idempotency: don't double-post the same event/kind within a week.
-		const key = `announce:${kind}:${eventData.name || now.toISOString()}`;
+		const key = `announce:${kind}:${eventData.name || now.toISOString().slice(0, 10)}`;
 		const seen = await env.FIGHTERS_KV.get(key);
 		if (seen !== null) {
 			console.log(`[announce] already posted ${key}, skipping`);
@@ -94,10 +123,11 @@ async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 
 		const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY });
 
+		const card = JSON.stringify(summarizeEvent(eventData));
 		const prompt =
 			kind === 'preview'
-				? `Write a card preview for tonight's event: ${JSON.stringify(eventData)}. Use ANALYSIS MODE. Lead with your headline take.`
-				: `Write a results recap for last night's event: ${JSON.stringify(eventData)}. Use ANALYSIS MODE. Call out who you were right and wrong about.`;
+				? `Write a card preview for tonight's event: ${card}. Use ANALYSIS MODE. Lead with your headline take.`
+				: `Write a results recap for last night's event: ${card}. Use ANALYSIS MODE. Call out who you were right and wrong about.`;
 
 		const result = await generateText({
 			model: openrouter(env.MODEL_ID),
@@ -109,6 +139,11 @@ async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 
 		const text = result.text.trim();
 		const reply = text.length > 3900 ? text.slice(0, 3897) + '...' : text;
+
+		if (!reply) {
+			console.error(`[announce] ${kind} generation returned empty text, skipping post`);
+			return;
+		}
 
 		await postMessage(env.SLACK_BOT_TOKEN, env.ANNOUNCE_CHANNEL_ID, reply);
 

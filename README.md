@@ -81,7 +81,9 @@ The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It ta
 
 Two Cloudflare Cron Triggers post to `ANNOUNCE_CHANNEL_ID` automatically:
 
-- `0 17 * * 6` — Saturday 17:00 UTC: fight-card preview for the upcoming event
-- `0 14 * * 0` — Sunday 14:00 UTC: results recap for the event that just happened
+- `0 17 * * SAT` — Saturday 17:00 UTC: fight-card preview for the upcoming event
+- `0 14 * * SUN` — Sunday 14:00 UTC: results recap for the event that just happened
+
+Note: Cloudflare cron day-of-week runs 1=Sunday..7=Saturday (not Unix 0-6), so day names are used to avoid ambiguity. The cron strings in `wrangler.jsonc` must stay byte-identical to the constants in `src/announce.ts`.
 
 Times are UTC and drift by 1h relative to US Eastern across DST (accepted). Leave `ANNOUNCE_CHANNEL_ID` empty to disable both. The bot must be invited to the channel for posting to work.

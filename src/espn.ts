@@ -187,6 +187,7 @@ export async function searchAthletes(
 export async function fetchScoreboard(dates?: string): Promise<ScoreboardResponse> {
   const url = dates ? `${ESPN_SITE}/scoreboard?dates=${dates}` : `${ESPN_SITE}/scoreboard`;
   const res = await fetch(url);
+  if (!res.ok) throw new Error(`[espn] scoreboard fetch failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<ScoreboardResponse>;
 }
 
