@@ -8,15 +8,19 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
 /**
  * Run the agent loop and always return a written answer.
  *
- * If the loop ends on a tool-call step (usually because it hit the step limit
+ * If the loop ends on a tool-call step (because it hit the step limit
  * mid-research), `result.text` is empty. Rather than surface a bare "Done.", we
  * make one more call with the tool results already in context and tools
  * disabled, forcing the model to write the final reply.
+ *
+ * The step budget is deliberately capped: this whole loop runs inside a
+ * Cloudflare `waitUntil()`, which the runtime cancels if it runs too long, so
+ * we trade a longer research chain for reliably finishing before that cutoff.
  */
 async function generateReply(model: LanguageModel, system: string, messages: ChatMessage[], tools: ToolSet): Promise<string> {
 	const result = await generateText({
 		model,
-		stopWhen: stepCountIs(20),
+		stopWhen: stepCountIs(12),
 		tools,
 		system,
 		messages,
