@@ -1,7 +1,39 @@
-import { generateText, stepCountIs } from 'ai';
+import { generateText, stepCountIs, LanguageModel, ToolSet } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { getTools } from './tools';
 import { postMessage, updateMessage, getThreadMessages, getDMHistory, SlackMessage } from './slack';
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+/**
+ * Run the agent loop and always return a written answer.
+ *
+ * If the loop ends on a tool-call step (usually because it hit the step limit
+ * mid-research), `result.text` is empty. Rather than surface a bare "Done.", we
+ * make one more call with the tool results already in context and tools
+ * disabled, forcing the model to write the final reply.
+ */
+async function generateReply(model: LanguageModel, system: string, messages: ChatMessage[], tools: ToolSet): Promise<string> {
+	const result = await generateText({
+		model,
+		stopWhen: stepCountIs(20),
+		tools,
+		system,
+		messages,
+	});
+
+	let text = result.text.trim();
+	if (!text) {
+		const followUp = await generateText({
+			model,
+			system,
+			messages: [...messages, ...result.response.messages],
+		});
+		text = followUp.text.trim();
+	}
+
+	return text;
+}
 
 export function buildSystemPrompt(): string {
 	const now = new Date().toLocaleString('en-US', {
@@ -91,15 +123,7 @@ export async function handleMention(
 
 		const tools = getTools(env);
 
-		const result = await generateText({
-			model: openrouter(env.MODEL_ID),
-			stopWhen: stepCountIs(8),
-			tools,
-			system: buildSystemPrompt(),
-			messages,
-		});
-
-		const text = result.text.trim();
+		const text = await generateReply(openrouter(env.MODEL_ID), buildSystemPrompt(), messages, tools);
 		const reply = text.length > 3900 ? text.slice(0, 3897) + '...' : text;
 
 		await updateMessage(env.SLACK_BOT_TOKEN, channelId, thinkingTs, reply || 'Done.');
@@ -124,15 +148,7 @@ export async function handleDM(userText: string, channelId: string, eventTs: str
 
 		const tools = getTools(env);
 
-		const result = await generateText({
-			model: openrouter(env.MODEL_ID),
-			stopWhen: stepCountIs(8),
-			tools,
-			system: buildSystemPrompt(),
-			messages,
-		});
-
-		const text = result.text.trim();
+		const text = await generateReply(openrouter(env.MODEL_ID), buildSystemPrompt(), messages, tools);
 		const reply = text.length > 3900 ? text.slice(0, 3897) + '...' : text;
 
 		await updateMessage(env.SLACK_BOT_TOKEN, channelId, thinkingTs, reply || 'Done.');
