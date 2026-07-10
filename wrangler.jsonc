@@ -7,7 +7,7 @@
 		"enabled": true,
 	},
 	"vars": {
-		"MODEL_ID": "anthropic/claude-sonnet-4-5",
+		"MODEL_ID": "anthropic/claude-sonnet-5",
 	},
 	// ANNOUNCE_CHANNEL_ID is a Wrangler secret (`wrangler secret put ANNOUNCE_CHANNEL_ID`), not a var.
 	// When unset, the scheduled announcements skip (see the guard in src/announce.ts).
