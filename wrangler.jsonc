@@ -9,6 +9,13 @@
 	"vars": {
 		"MODEL_ID": "anthropic/claude-sonnet-4-5",
 	},
+	// ANNOUNCE_CHANNEL_ID is a Wrangler secret (`wrangler secret put ANNOUNCE_CHANNEL_ID`), not a var.
+	// When unset, the scheduled announcements skip (see the guard in src/announce.ts).
+	// Cloudflare cron day-of-week is 1=Sunday..7=Saturday; day names avoid the ambiguity.
+	// Must stay byte-identical to PREVIEW_CRON/RECAP_CRON in src/announce.ts (dispatch matches the string).
+	"triggers": {
+		"crons": ["0 13 * * FRI", "0 14 * * SUN"],
+	},
 	"kv_namespaces": [
 		{
 			"binding": "FIGHTERS_KV",

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { verifySlackSignature } from "./slack";
 import { handleMention, handleDM } from "./agent";
+import { handleScheduled } from "./announce";
 
 type Bindings = {
   SLACK_SIGNING_SECRET: string;
@@ -9,6 +10,7 @@ type Bindings = {
   MODEL_ID: string;
   FIGHTERS_KV: KVNamespace;
   BRAVE_API_KEY: string;
+  ANNOUNCE_CHANNEL_ID: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -87,4 +89,7 @@ app.post("/slack/events", async (c) => {
   return c.json({ ok: true });
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled: handleScheduled,
+} satisfies ExportedHandler<Bindings>;

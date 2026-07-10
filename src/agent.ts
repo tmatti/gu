@@ -3,7 +3,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { getTools } from './tools';
 import { postMessage, updateMessage, getThreadMessages, getDMHistory, SlackMessage } from './slack';
 
-function buildSystemPrompt(): string {
+export function buildSystemPrompt(): string {
 	const now = new Date().toLocaleString('en-US', {
 		timeZone: 'America/New_York',
 		dateStyle: 'full',
