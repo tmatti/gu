@@ -71,6 +71,19 @@ describe('pickPreviewEvent', () => {
 		const events = [makeEvent({ id: 'a', date: hoursFromNow(10) }), makeEvent({ id: 'b', date: hoursFromNow(20) })];
 		expect(pickPreviewEvent(events, NOW)?.id).toBe('a');
 	});
+
+	it('ignores non-UFC promotions and picks the UFC card', () => {
+		const events = [
+			makeEvent({ id: 'pfl', name: 'PFL 8: Playoffs', date: hoursFromNow(10) }),
+			makeEvent({ id: 'ufc', name: 'UFC Fight Night: Whittaker vs. Krylov', date: hoursFromNow(20) }),
+		];
+		expect(pickPreviewEvent(events, NOW)?.id).toBe('ufc');
+	});
+
+	it('returns null when the only in-window event is non-UFC', () => {
+		const events = [makeEvent({ name: 'Bellator 320', date: hoursFromNow(12) })];
+		expect(pickPreviewEvent(events, NOW)).toBeNull();
+	});
 });
 
 describe('pickRecapEvent', () => {
@@ -97,6 +110,11 @@ describe('pickRecapEvent', () => {
 	it('returns an event exactly at -36h with a completed fight (inclusive boundary)', () => {
 		const events = [makeEvent({ date: hoursFromNow(-36), completed: true })];
 		expect(pickRecapEvent(events, NOW)?.date).toBe(hoursFromNow(-36));
+	});
+
+	it('ignores a completed non-UFC card', () => {
+		const events = [makeEvent({ name: 'PFL 8: Playoffs', date: hoursFromNow(-12), completed: true })];
+		expect(pickRecapEvent(events, NOW)).toBeNull();
 	});
 
 	it('returns null for an event more than 36h ago', () => {

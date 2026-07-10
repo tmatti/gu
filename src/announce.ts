@@ -26,10 +26,18 @@ interface Env {
 
 type AnnounceKind = 'preview' | 'recap';
 
-/** First event starting within the next 48h of `now` (inclusive at +48h). */
+// The mma/ufc scoreboard is ESPN's default MMA feed and can surface other promotions (PFL, Bellator).
+// UFC cards are the only ones we announce, and they always lead with "UFC" (e.g. "UFC 329:",
+// "UFC Fight Night:", "UFC on ESPN:").
+function isUfcEvent(event: ScoreboardEvent): boolean {
+	return /^ufc\b/i.test((event.name ?? '').trim());
+}
+
+/** First UFC event starting within the next 48h of `now` (inclusive at +48h). */
 export function pickPreviewEvent(events: ScoreboardEvent[], now: Date): ScoreboardEvent | null {
 	const nowMs = now.getTime();
 	for (const event of events) {
+		if (!isUfcEvent(event)) continue;
 		const eventMs = new Date(event.date).getTime();
 		if (Number.isNaN(eventMs)) continue;
 		if (eventMs > nowMs && eventMs - nowMs <= PREVIEW_AHEAD_MS) return event;
@@ -38,12 +46,13 @@ export function pickPreviewEvent(events: ScoreboardEvent[], now: Date): Scoreboa
 }
 
 /**
- * First event whose date is within the past 36h of `now` (inclusive at -36h) and has at least one
- * competition marked completed.
+ * First UFC event whose date is within the past 36h of `now` (inclusive at -36h) and has at least
+ * one competition marked completed.
  */
 export function pickRecapEvent(events: ScoreboardEvent[], now: Date): ScoreboardEvent | null {
 	const nowMs = now.getTime();
 	for (const event of events) {
+		if (!isUfcEvent(event)) continue;
 		const eventMs = new Date(event.date).getTime();
 		if (Number.isNaN(eventMs)) continue;
 		if (eventMs > nowMs || nowMs - eventMs > RECAP_WINDOW_MS) continue;
