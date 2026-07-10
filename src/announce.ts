@@ -7,11 +7,13 @@ import { fetchScoreboard, ScoreboardEvent } from './espn';
 
 // Cloudflare cron day-of-week is 1=Sunday..7=Saturday (not Unix 0-6); day names avoid the ambiguity.
 // Must stay byte-identical to triggers.crons in wrangler.jsonc — dispatch matches on the exact string.
-export const PREVIEW_CRON = '0 17 * * SAT'; // Saturday 17:00 UTC (~1pm ET)
+export const PREVIEW_CRON = '0 13 * * FRI'; // Friday 13:00 UTC (~8-9am ET)
 export const RECAP_CRON = '0 14 * * SUN'; // Sunday 14:00 UTC (~10am ET)
 
-const HOURS_36_MS = 36 * 60 * 60 * 1000;
-const PREVIEW_LOOKBACK_MS = 12 * 60 * 60 * 1000;
+// The Friday-morning preview needs ~1.5 days of reach to cover Saturday cards from early
+// international start times through late US main cards that spill into Sunday UTC.
+const PREVIEW_AHEAD_MS = 48 * 60 * 60 * 1000;
+const RECAP_WINDOW_MS = 36 * 60 * 60 * 1000;
 
 interface Env {
 	SLACK_BOT_TOKEN: string;
@@ -24,22 +26,13 @@ interface Env {
 
 type AnnounceKind = 'preview' | 'recap';
 
-/**
- * First event within the next 36h of `now` (inclusive at +36h), or one that started within the past
- * 12h and isn't fully completed — early international cards start before the cron fires and still
- * deserve a preview while the card is live.
- */
+/** First event starting within the next 48h of `now` (inclusive at +48h). */
 export function pickPreviewEvent(events: ScoreboardEvent[], now: Date): ScoreboardEvent | null {
 	const nowMs = now.getTime();
 	for (const event of events) {
 		const eventMs = new Date(event.date).getTime();
 		if (Number.isNaN(eventMs)) continue;
-		if (eventMs > nowMs && eventMs - nowMs <= HOURS_36_MS) return event;
-		if (eventMs <= nowMs && nowMs - eventMs <= PREVIEW_LOOKBACK_MS) {
-			const fights = event.competitions ?? [];
-			const allDone = fights.length > 0 && fights.every((c) => c.status?.type?.completed === true);
-			if (!allDone) return event;
-		}
+		if (eventMs > nowMs && eventMs - nowMs <= PREVIEW_AHEAD_MS) return event;
 	}
 	return null;
 }
@@ -53,7 +46,7 @@ export function pickRecapEvent(events: ScoreboardEvent[], now: Date): Scoreboard
 	for (const event of events) {
 		const eventMs = new Date(event.date).getTime();
 		if (Number.isNaN(eventMs)) continue;
-		if (eventMs > nowMs || nowMs - eventMs > HOURS_36_MS) continue;
+		if (eventMs > nowMs || nowMs - eventMs > RECAP_WINDOW_MS) continue;
 		const hasCompleted = event.competitions?.some((c) => c.status?.type?.completed === true);
 		if (hasCompleted) return event;
 	}

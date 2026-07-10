@@ -43,23 +43,23 @@ describe('pickPreviewEvent', () => {
 		expect(pickPreviewEvent(events, NOW)).toBeNull();
 	});
 
-	it('returns an event exactly at +36h (inclusive boundary)', () => {
-		const events = [makeEvent({ date: hoursFromNow(36) })];
-		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(36));
+	it('returns a late Saturday-night card ~40h out', () => {
+		const events = [makeEvent({ date: hoursFromNow(40) })];
+		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(40));
 	});
 
-	it('returns an in-progress event that started 4h ago and is not fully completed', () => {
-		const events = [makeEvent({ date: hoursFromNow(-4), completed: false })];
-		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(-4));
+	it('returns an event exactly at +48h (inclusive boundary)', () => {
+		const events = [makeEvent({ date: hoursFromNow(48) })];
+		expect(pickPreviewEvent(events, NOW)?.date).toBe(hoursFromNow(48));
 	});
 
-	it('returns null for a started event whose fights are all completed', () => {
-		const events = [makeEvent({ date: hoursFromNow(-4), completed: true })];
+	it('returns null for an event just past the +48h boundary', () => {
+		const events = [makeEvent({ date: hoursFromNow(49) })];
 		expect(pickPreviewEvent(events, NOW)).toBeNull();
 	});
 
-	it('returns null for a not-completed event that started 13h ago (beyond the 12h lookback)', () => {
-		const events = [makeEvent({ date: hoursFromNow(-13), completed: false })];
+	it('returns null for a past event', () => {
+		const events = [makeEvent({ date: hoursFromNow(-4) })];
 		expect(pickPreviewEvent(events, NOW)).toBeNull();
 	});
 
