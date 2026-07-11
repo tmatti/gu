@@ -47,7 +47,7 @@ export const SLANG_TERMS: SlangTerm[] = [
 	{ term: 'lay and pray', definition: 'Taking a fighter down and lying on top doing nothing to grind out a decision. Derogatory.' },
 	{ term: 'wrestlefuck', definition: 'smothering, low-damage top control used to nullify rather than finish.' },
 	{ term: 'point fighter / decision machine', definition: 'A safe fighter who racks up points and decisions instead of hunting finishes.' },
-	{ term: 'smesh', definition: 'Khabib-ism for "smash" — to maul someone with relentless wrestling and top pressure.' },
+	{ term: 'smesh', definition: 'Khabib-ism for "smash": to maul someone with relentless wrestling and top pressure.' },
 	{ term: 'ragdoll', definition: 'To toss an opponent around at will with wrestling/strength.' },
 
 	// ── Fight moments & outcomes ────────────────────────────────────────────
@@ -62,7 +62,7 @@ export const SLANG_TERMS: SlangTerm[] = [
 	{
 		term: 'built different',
 		definition:
-			'A fighter with freakish, un-teachable natural gifts — an indestructible chin, ungodly power; used as high praise (sometimes ironic).',
+			'A fighter with freakish, un-teachable natural gifts: an indestructible chin, ungodly power. Used as high praise (sometimes ironic).',
 	},
 	{
 		term: 'people forget, man',
@@ -78,11 +78,11 @@ export const SLANG_TERMS: SlangTerm[] = [
 	{
 		term: 'peaches and creamville',
 		definition:
-			"A state of delusion where fans assume outcomes will always break the way they want — a reminder that fighting isn't perfect or fair.",
+			"A state of delusion where fans assume outcomes will always break the way they want; a reminder that fighting isn't perfect or fair.",
 	},
 	{
 		term: 'big bopper / ploddy',
-		definition: 'A heavyweight who isn\'t especially athletic or technical — "plotty", just out there to slug it out.',
+		definition: 'A heavyweight who isn\'t especially athletic or technical; "plotty", just out there to slug it out.',
 	},
 	{ term: 'pipsqueak', definition: 'A scrawny or lanky fighter.' },
 	{
@@ -92,12 +92,12 @@ export const SLANG_TERMS: SlangTerm[] = [
 	{
 		term: 'outside foot battle',
 		definition:
-			'Fighting to place your lead foot outside the opponent\'s for a positional edge — sometimes a "cope" for a low-output fighter.',
+			'Fighting to place your lead foot outside the opponent\'s for a positional edge; sometimes a "cope" for a low-output fighter.',
 	},
 	{
 		term: 'impose your will',
 		definition:
-			'Having a concrete, active plan to take the fight to the opponent — grappling or aggressive striking — rather than waiting for things to happen.',
+			'Having a concrete, active plan to take the fight to the opponent (grappling or aggressive striking) rather than waiting for things to happen.',
 	},
 	{
 		term: 'earning their freedom',
@@ -107,16 +107,16 @@ export const SLANG_TERMS: SlangTerm[] = [
 	{
 		term: 'smudge',
 		definition:
-			'A grappling style where you pin an opponent to the fence or canvas and squeeze to "smudge" them into the surface — working to convince the ref rather than advancing position.',
+			'A grappling style where you pin an opponent to the fence or canvas and squeeze to "smudge" them into the surface, working to convince the ref rather than advancing position.',
 	},
 	{
 		term: "lighter-man's skill",
 		definition:
-			'The speed and agility advantage of the lower weight classes vs heavier weight classes — often invoked when a fighter successfully moves up in weight.',
+			'The speed and agility advantage of the lower weight classes vs heavier weight classes; often invoked when a fighter successfully moves up in weight.',
 	},
 	{
 		term: 'density maxing',
-		definition: 'Recomposing the body — gaining muscle and leaning out at the same weight to become as physically dense as possible.',
+		definition: 'Recomposing the body: gaining muscle and leaning out at the same weight to become as physically dense as possible.',
 	},
 
 	// ── The MMA Guru signatures ─────────────────────────────────────────────
@@ -125,24 +125,24 @@ export const SLANG_TERMS: SlangTerm[] = [
 	// incredulous.
 	{
 		term: 'buns / absolute buns',
-		definition: 'Exceedingly poor, low-tier skill — how he writes off a fighter he rates as entirely untalented.',
+		definition: 'Exceedingly poor, low-tier skill; how he writes off a fighter he rates as entirely untalented.',
 	},
 	{
 		term: 'fraud checked',
-		definition: 'The downfall of an overhyped prospect — finally matched with a top-tier opponent and decisively beaten.',
+		definition: 'The downfall of an overhyped prospect: finally matched with a top-tier opponent and decisively beaten.',
 	},
 	{ term: 'cardio capacity of a smoker', definition: 'A jab at a fighter who completely gases out after one round of high pace.' },
 	{ term: 'heartless', definition: 'A fighter he believes lacks the inner grit to fight back and win once a matchup turns against them.' },
 	{ term: 'slimed out', definition: 'Getting brutally knocked out, utterly dominated, or decisively finished.' },
 	{
 		term: 'palms up',
-		definition: 'Knocked completely unconscious — the image of a fighter flat on their back, hands open and facing the ceiling.',
+		definition: 'Knocked completely unconscious: the image of a fighter flat on their back, hands open and facing the ceiling.',
 	},
 	{
 		term: 'sent to the shadow realm',
 		definition: 'Knocked out so severely they seem to lose consciousness before hitting the canvas. (Anime/gaming borrow.)',
 	},
-	{ term: 'stiffened up', definition: 'A body going rigid the instant a clean KO blow lands — the fencing response.' },
+	{ term: 'stiffened up', definition: 'A body going rigid the instant a clean KO blow lands (the fencing response).' },
 	{ term: 'folded', definition: 'A body shot or chin strike that buckles the knees and drops a fighter forward or in half.' },
 	{
 		term: 'turned into a panic wrestler',
@@ -150,12 +150,12 @@ export const SLANG_TERMS: SlangTerm[] = [
 	},
 	{
 		term: 'quitting in the cage',
-		definition: 'Mentally breaking and looking for an easy way out of a tough fight — e.g. giving up the back to accept a submission.',
+		definition: 'Mentally breaking and looking for an easy way out of a tough fight, e.g. giving up the back to accept a submission.',
 	},
 	{ term: 'absolutely slept him', definition: 'A one-punch, instantaneous knockout that shuts the lights off on contact.' },
 	{
 		term: 'ran through him',
-		definition: 'An effortless, completely one-sided win — zero damage taken, opponent treated like a routine sparring partner.',
+		definition: 'An effortless, completely one-sided win: zero damage taken, opponent treated like a routine sparring partner.',
 	},
 	{
 		term: 'leveled up',
@@ -168,7 +168,7 @@ export const SLANG_TERMS: SlangTerm[] = [
 	},
 	{
 		term: 'the truth / he is the truth',
-		definition: "His highest praise for a rising prospect — the skills match the hype and they're a legit title threat.",
+		definition: "His highest praise for a rising prospect: the skills match the hype and they're a legit title threat.",
 	},
 	{
 		term: 'based',
@@ -178,6 +178,6 @@ export const SLANG_TERMS: SlangTerm[] = [
 ];
 
 /** Pre-formatted block for appending to the system prompt. */
-export const MMA_SLANG = `MMA slang library — use these in context to sound like the real scene (MMAGuru / Bedtime MMA / Lucas Tracy energy). Sprinkle, don't spam: a term or two where it fits, used correctly. Never define terms unprompted or list them out.
+export const MMA_SLANG = `MMA slang library. Use these in context to sound like the real scene (MMAGuru / Bedtime MMA / Lucas Tracy energy). Sprinkle, don't spam: a term or two where it fits, used correctly. Never define terms unprompted or list them out.
 
 ${SLANG_TERMS.map((t) => `- ${t.term}: ${t.definition}${t.usage ? ` (${t.usage})` : ''}`).join('\n')}`;
