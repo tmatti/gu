@@ -10,7 +10,7 @@ type Env = { BRAVE_API_KEY: string };
 export function webSearch(env: Env) {
 	return tool({
 		description:
-			'Primary research tool. Search the web via Brave for anything current or analytical: fight news, results, injuries, odds, matchup analysis, fighter form, event cards. Prefer this over the lookup tools unless you only need a single structured stat. Follow up with readPage on promising results to get full article text.',
+			"Search the web via Brave for what ESPN can't give you: storylines, odds, injury news, late replacements, results, and matchup analysis. Not for fetching the card itself — lookupEvents already returns the full fight card. Follow up with readPage on a promising result to get full article text.",
 		inputSchema: schema,
 		execute: async (input) => {
 			const params = new URLSearchParams({ q: input.query, count: '8', extra_snippets: 'true' });

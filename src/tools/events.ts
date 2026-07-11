@@ -9,7 +9,7 @@ const schema = z.object({
 export function lookupEvents() {
 	return tool({
 		description:
-			'Basic ESPN event data: name, date, venue, and fight card for the nearest UFC event, or calendar dates for a named event. Limited and may lag reality. For previews, results, or anything analytical, use webSearch instead.',
+			'PRIMARY, first call for anything about an upcoming event card or card preview. Returns the authoritative card skeleton live from ESPN in one fast call: event name, date, venue, and the full fight card with fighter names, records, weight classes, and countries. Or calendar dates for a named event. Start here to get the card, then reason over it. May lag very late card changes (a same-week replacement or scratch); confirm those with webSearch if it matters.',
 		inputSchema: schema,
 		execute: async (input) => {
 			const data = await fetchScoreboard();

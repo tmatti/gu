@@ -31,7 +31,7 @@ A single Cloudflare Worker that handles Slack `app_mention` events and responds 
 
 **Tools (`src/tools/`):**
 - Each tool is defined with `tool({ inputSchema: zodSchema, execute })` from `ai`
-- Currently stubs — ESPN API endpoints are commented in each file for when they're wired up
+- Implemented: `lookupEvents`, `lookupFighter`, and `lookupRankings` hit ESPN; `webSearch` uses the Brave Search API; `readPage` fetches and extracts page text
 - ESPN base URL: `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/`
 
 **Runtime constraints:**
