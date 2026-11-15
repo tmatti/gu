@@ -66,7 +66,7 @@ The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It ta
 | `SLACK_SIGNING_SECRET` | Wrangler secret | From Slack app settings |
 | `SLACK_BOT_TOKEN` | Wrangler secret | Bot OAuth token (`xoxb-...`) |
 | `OPENROUTER_API_KEY` | Wrangler secret | From openrouter.ai |
-| `ANNOUNCE_CHANNEL_ID` | Wrangler secret | Slack channel ID for scheduled previews/recaps; unset disables them |
+| `ANNOUNCE_USER_ID` | Wrangler secret | Slack member ID (`U...`) that scheduled previews/recaps are DMed to; unset disables them |
 
 ## How it works
 
@@ -79,13 +79,13 @@ The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It ta
 
 ### Scheduled announcements
 
-**Currently disabled**: `triggers.crons` in `wrangler.jsonc` is empty. Restore the two cron strings below to re-enable.
+Two Cloudflare Cron Triggers DM the Slack user in `ANNOUNCE_USER_ID`:
 
-When enabled, two Cloudflare Cron Triggers post to `ANNOUNCE_CHANNEL_ID` automatically:
-
-- `0 13 * * FRI` — Friday 13:00 UTC (~8-9am ET): fight-card preview for the upcoming weekend event
+- `0 13 * * FRI` — Friday 13:00 UTC (~8-9am ET): preview of the upcoming weekend event
 - `0 14 * * SUN` — Sunday 14:00 UTC: results recap for the event that just happened
+
+Both are short: a two-sentence brief on the main event and co-main, then the rest of the card as a plain list (main card and prelims) with names, weight class, and records. Only the two briefs come from the model; the card is formatted straight from ESPN, so it still sends if the model call fails.
 
 Note: Cloudflare cron day-of-week runs 1=Sunday..7=Saturday (not Unix 0-6), so day names are used to avoid ambiguity. The cron strings in `wrangler.jsonc` must stay byte-identical to the constants in `src/announce.ts`.
 
-Times are UTC and drift by 1h relative to US Eastern across DST (accepted). Set the `ANNOUNCE_CHANNEL_ID` secret (`wrangler secret put ANNOUNCE_CHANNEL_ID`) to enable them; leaving it unset disables both. The bot must be invited to the channel for posting to work.
+Times are UTC and drift by 1h relative to US Eastern across DST (accepted). Set the `ANNOUNCE_USER_ID` secret (`wrangler secret put ANNOUNCE_USER_ID`) to your Slack member ID (profile → ⋮ → Copy member ID) to enable them; leaving it unset disables both. The member ID is stable across username changes.

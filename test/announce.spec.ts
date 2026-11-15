@@ -1,6 +1,14 @@
 import { env, createExecutionContext } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import { pickPreviewEvent, pickRecapEvent, handleScheduled, PREVIEW_CRON, RECAP_CRON } from '../src/announce';
+import {
+	pickPreviewEvent,
+	pickRecapEvent,
+	handleScheduled,
+	formatAnnouncement,
+	parseBriefs,
+	PREVIEW_CRON,
+	RECAP_CRON,
+} from '../src/announce';
 import type { ScoreboardEvent } from '../src/espn';
 import wranglerRaw from '../wrangler.jsonc?raw';
 
@@ -127,22 +135,116 @@ describe('pickRecapEvent', () => {
 	});
 });
 
+function fight(
+	date: string,
+	weightClass: string,
+	a: [string, string],
+	b: [string, string],
+	winner?: 'a' | 'b',
+): ScoreboardEvent['competitions'][number] {
+	return {
+		date,
+		type: { abbreviation: weightClass },
+		status: { type: { completed: winner !== undefined } },
+		competitors: [
+			// Deliberately out of order: formatting must sort by `order`.
+			{ order: 2, winner: winner === 'b', athlete: { displayName: b[0] }, records: [{ summary: b[1] }] },
+			{ order: 1, winner: winner === 'a', athlete: { displayName: a[0] }, records: [{ summary: a[1] }] },
+		],
+	};
+}
+
+function makeCard(withResults = false): ScoreboardEvent {
+	const w = (x: 'a' | 'b') => (withResults ? x : undefined);
+	return {
+		id: '1',
+		name: 'UFC 334: Gane vs. Hokit',
+		date: '2026-11-14T22:00Z',
+		venues: [{ fullName: 'Test Arena' }],
+		// ESPN order: first fight of the night first, main event last.
+		competitions: [
+			fight('2026-11-14T22:00Z', 'Lightweight', ['Evan Elder', '11-2-0'], ['Samuel Sanches', '11-2-0'], w('a')),
+			fight('2026-11-15T00:00Z', 'Welterweight', ['Stephen Thompson', '18-9-1'], ['Charles Radtke', '12-6-0'], w('b')),
+			fight('2026-11-15T02:00Z', 'Middleweight', ['Caio Borralho', '19-2-0'], ['Yousri Belgaroui', '11-4-0'], w('a')),
+			fight('2026-11-15T02:00Z', 'W Bantamweight', ['Kayla Harrison', '20-1-0'], ['Amanda Nunes', '23-6-0'], w('b')),
+			fight('2026-11-15T02:00Z', 'Heavyweight', ['Ciryl Gane', '15-2-0'], ['Josh Hokit', '10-1-0'], w('a')),
+		],
+	};
+}
+
+describe('formatAnnouncement', () => {
+	it('briefs the main and co-main, then lists the main card and prelims', () => {
+		const text = formatAnnouncement(makeCard(), 'preview', { main: 'Main brief.', coMain: 'Co-main brief.' });
+		expect(text).toBe(
+			[
+				'*UFC 334: Gane vs. Hokit*',
+				'Sat, Nov 14 · Test Arena',
+				'',
+				'*Main event*: Heavyweight: Ciryl Gane (15-2-0) vs. Josh Hokit (10-1-0)',
+				'Main brief.',
+				'',
+				'*Co-main*: W Bantamweight: Kayla Harrison (20-1-0) vs. Amanda Nunes (23-6-0)',
+				'Co-main brief.',
+				'',
+				'*Main card* (9:00 PM ET)',
+				'• Middleweight: Caio Borralho (19-2-0) vs. Yousri Belgaroui (11-4-0)',
+				'',
+				'*Prelims* (5:00 PM ET)',
+				'• Welterweight: Stephen Thompson (18-9-1) vs. Charles Radtke (12-6-0)',
+				'• Lightweight: Evan Elder (11-2-0) vs. Samuel Sanches (11-2-0)',
+			].join('\n'),
+		);
+	});
+
+	it('still produces the card when there are no briefs', () => {
+		const text = formatAnnouncement(makeCard(), 'preview');
+		expect(text).toContain('*Main event*: Heavyweight: Ciryl Gane (15-2-0) vs. Josh Hokit (10-1-0)\n\n*Co-main*');
+	});
+
+	it('lists recap results winner-first with "def."', () => {
+		const text = formatAnnouncement(makeCard(true), 'recap');
+		expect(text).toContain('*UFC 334: Gane vs. Hokit* results');
+		expect(text).toContain('*Main event*: Heavyweight: Ciryl Gane (15-2-0) def. Josh Hokit (10-1-0)');
+		expect(text).toContain('*Co-main*: W Bantamweight: Amanda Nunes (23-6-0) def. Kayla Harrison (20-1-0)');
+		expect(text).toContain('• Welterweight: Charles Radtke (12-6-0) def. Stephen Thompson (18-9-1)');
+		expect(text).not.toContain('ET)');
+	});
+
+	it('uses a single list when fights have no distinct start times', () => {
+		const card = makeCard();
+		for (const c of card.competitions) c.date = undefined;
+		const text = formatAnnouncement(card, 'preview');
+		expect(text).toContain('*Rest of the card*');
+		expect(text).not.toContain('*Prelims*');
+	});
+});
+
+describe('parseBriefs', () => {
+	it('splits two paragraphs into main and co-main', () => {
+		expect(parseBriefs('Main take.\n\nCo-main take.\n', true)).toEqual({ main: 'Main take.', coMain: 'Co-main take.' });
+	});
+
+	it('treats a single paragraph as the main brief', () => {
+		expect(parseBriefs('Only one.', true)).toEqual({ main: 'Only one.' });
+		expect(parseBriefs('One.\n\nTwo.', false)).toEqual({ main: 'One. Two.' });
+	});
+
+	it('returns nothing for empty text', () => {
+		expect(parseBriefs('  \n', true)).toEqual({});
+	});
+});
+
 describe('handleScheduled', () => {
-	it('short-circuits when no channel is configured', async () => {
+	it('short-circuits when no recipient is configured', async () => {
 		const ctx = createExecutionContext();
-		const testEnv = { ...env, ANNOUNCE_CHANNEL_ID: '' } as Parameters<typeof handleScheduled>[1];
+		const testEnv = { ...env, ANNOUNCE_USER_ID: '' } as Parameters<typeof handleScheduled>[1];
 		await expect(handleScheduled({ cron: PREVIEW_CRON } as ScheduledController, testEnv, ctx)).resolves.toBeUndefined();
 	});
 });
 
 describe('cron config', () => {
-	// The announcements are currently disabled (empty crons). Any cron that is configured
-	// must still match a dispatch constant byte-for-byte, so re-enabling can't silently miss.
-	it('wrangler.jsonc crons are each byte-identical to a dispatch constant', () => {
+	it('wrangler.jsonc crons stay byte-identical to the dispatch constants', () => {
 		const json = JSON.parse(wranglerRaw.replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1'));
-		expect(Array.isArray(json.triggers.crons)).toBe(true);
-		for (const cron of json.triggers.crons) {
-			expect([PREVIEW_CRON, RECAP_CRON]).toContain(cron);
-		}
+		expect(json.triggers.crons).toEqual([PREVIEW_CRON, RECAP_CRON]);
 	});
 });
