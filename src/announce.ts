@@ -21,10 +21,10 @@ interface Env {
 	MODEL_ID: string;
 	FIGHTERS_KV: KVNamespace;
 	BRAVE_API_KEY: string;
-	ANNOUNCE_CHANNEL_ID: string;
+	ANNOUNCE_USER_ID: string;
 }
 
-type AnnounceKind = 'preview' | 'recap';
+export type AnnounceKind = 'preview' | 'recap';
 
 // The mma/ufc scoreboard is ESPN's default MMA feed and can surface other promotions (PFL, Bellator).
 // UFC cards are the only ones we announce, and they always lead with "UFC" (e.g. "UFC 329:",
@@ -69,31 +69,132 @@ function yyyymmdd(date: Date): string {
 	return `${y}${m}${d}`;
 }
 
-// The raw scoreboard event is ~65KB at runtime (broadcasts, links, uids...); project it down to the
-// fields the prompt actually needs before embedding it.
-function summarizeEvent(event: ScoreboardEvent) {
-	return {
-		name: event.name,
-		date: event.date,
-		venue: event.venues?.[0]?.fullName ?? null,
-		fights: (event.competitions ?? []).map((comp) => ({
-			weightClass: comp.type?.abbreviation ?? '',
-			completed: comp.status?.type?.completed ?? false,
-			fighters: [...comp.competitors]
-				.sort((x, y) => x.order - y.order)
-				.map((c) => ({
-					name: c.athlete.displayName,
-					record: c.records?.[0]?.summary ?? '',
-					winner: c.winner ?? false,
-				})),
-		})),
+type Competition = ScoreboardEvent['competitions'][number];
+
+export interface Briefs {
+	main?: string;
+	coMain?: string;
+}
+
+function sortedFighters(comp: Competition) {
+	return [...comp.competitors]
+		.sort((x, y) => x.order - y.order)
+		.map((c) => ({
+			name: c.athlete.displayName,
+			record: c.records?.[0]?.summary ?? '',
+			winner: c.winner === true,
+		}));
+}
+
+/** One fight as "Weight class: Name (record) vs. Name (record)"; recaps use "def." with the winner first. */
+export function fightLine(comp: Competition, kind: AnnounceKind): string {
+	const fighters = sortedFighters(comp);
+	const label = (f: (typeof fighters)[number]) => (f.record ? `${f.name} (${f.record})` : f.name);
+	const weightClass = comp.type?.abbreviation ? `${comp.type.abbreviation}: ` : '';
+	const winner = kind === 'recap' ? fighters.find((f) => f.winner) : undefined;
+	if (winner && fighters.length === 2) {
+		const loser = fighters.find((f) => f !== winner)!;
+		return `${weightClass}${label(winner)} def. ${label(loser)}`;
+	}
+	const suffix = kind === 'recap' && comp.status?.type?.completed ? ' (no winner listed)' : '';
+	return `${weightClass}${fighters.map(label).join(' vs. ')}${suffix}`;
+}
+
+function easternTime(iso: string, options: Intl.DateTimeFormatOptions): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return '';
+	return date.toLocaleString('en-US', { timeZone: 'America/New_York', ...options });
+}
+
+/**
+ * Builds the whole Slack message. Everything except the two briefs is deterministic, straight
+ * from ESPN: ESPN lists fights first-to-last, so the last one is the main event, and the fights
+ * sharing the latest start time are the main card (everything earlier is prelims).
+ */
+export function formatAnnouncement(event: ScoreboardEvent, kind: AnnounceKind, briefs: Briefs = {}): string {
+	const fights = [...(event.competitions ?? [])].reverse(); // main event first
+	const [main, coMain, ...rest] = fights;
+
+	const header = [`*${event.name}*${kind === 'recap' ? ' results' : ''}`];
+	const day = easternTime(event.date, { weekday: 'short', month: 'short', day: 'numeric' });
+	const venue = event.venues?.[0]?.fullName;
+	const where = [day, venue].filter(Boolean).join(' · ');
+	if (where) header.push(where);
+	const sections: string[] = [header.join('\n')];
+
+	const featured = (title: string, comp: Competition | undefined, brief: string | undefined) => {
+		if (!comp) return;
+		const lines = [`*${title}*: ${fightLine(comp, kind)}`];
+		if (brief?.trim()) lines.push(brief.trim());
+		sections.push(lines.join('\n'));
 	};
+	featured('Main event', main, briefs.main);
+	featured('Co-main', coMain, briefs.coMain);
+
+	const mainCardDate = main?.date;
+	const split = mainCardDate !== undefined && fights.some((f) => f.date !== mainCardDate);
+	const list = (title: string, comps: Competition[], startIso?: string) => {
+		if (comps.length === 0) return;
+		const start = kind === 'preview' && startIso ? easternTime(startIso, { hour: 'numeric', minute: '2-digit' }) : '';
+		const heading = start ? `*${title}* (${start} ET)` : `*${title}*`;
+		sections.push([heading, ...comps.map((c) => `• ${fightLine(c, kind)}`)].join('\n'));
+	};
+	if (split) {
+		const prelims = rest.filter((f) => f.date !== mainCardDate);
+		list('Main card', rest.filter((f) => f.date === mainCardDate), mainCardDate);
+		list('Prelims', prelims, prelims[prelims.length - 1]?.date);
+	} else {
+		// ESPN gave no per-fight start times to split on.
+		list('Rest of the card', rest);
+	}
+
+	return sections.join('\n\n');
+}
+
+/** The model is asked for one paragraph per featured fight; anything else is treated as a single brief. */
+export function parseBriefs(text: string, hasCoMain: boolean): Briefs {
+	const paragraphs = text
+		.split(/\n\s*\n/)
+		.map((p) => p.trim())
+		.filter(Boolean);
+	if (paragraphs.length === 0) return {};
+	if (!hasCoMain || paragraphs.length === 1) return { main: paragraphs.join(' ') };
+	return { main: paragraphs[0], coMain: paragraphs.slice(1).join(' ') };
+}
+
+async function generateBriefs(kind: AnnounceKind, event: ScoreboardEvent, env: Env): Promise<Briefs> {
+	const [main, coMain] = [...(event.competitions ?? [])].reverse();
+	if (!main) return {};
+
+	const describe = (comp: Competition) => ({ weightClass: comp.type?.abbreviation ?? '', fighters: sortedFighters(comp) });
+	const fightsJson = JSON.stringify({
+		event: event.name,
+		mainEvent: describe(main),
+		...(coMain ? { coMain: describe(coMain) } : {}),
+	});
+	const count = coMain ? 'exactly two paragraphs separated by one blank line: the main event first, then the co-main' : 'exactly one paragraph';
+	const task =
+		kind === 'preview'
+			? 'Brief me on these upcoming fights: the key angle and your pick for each.'
+			: 'Brief me on how these fights from last night went: the result, how it happened, and what it means.';
+	const prompt = `${task} ${fightsJson}
+Write ${count}. Two sentences per fight, three at most for a title fight. Do not restate names, records, or weight classes as a heading, they are already shown above your text. Do not mention any other fight on the card. No labels, no lists, no preamble.`;
+
+	const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY });
+	const result = await generateText({
+		model: openrouter(env.MODEL_ID),
+		stopWhen: stepCountIs(5),
+		tools: getTools(env),
+		system: buildSystemPrompt(),
+		messages: [{ role: 'user', content: prompt }],
+	});
+	return parseBriefs(result.text, coMain !== undefined);
 }
 
 async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 	// Guard first, before any network call.
-	if (!env.ANNOUNCE_CHANNEL_ID) {
-		console.log('[announce] no channel configured, skipping');
+	if (!env.ANNOUNCE_USER_ID) {
+		console.log('[announce] no recipient configured, skipping');
 		return;
 	}
 
@@ -123,31 +224,19 @@ async function runAnnouncement(kind: AnnounceKind, env: Env): Promise<void> {
 			return;
 		}
 
-		const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY });
-
-		const card = JSON.stringify(summarizeEvent(eventData));
-		const prompt =
-			kind === 'preview'
-				? `Write a card preview for tonight's event: ${card}. Use ANALYSIS MODE. Lead with your headline take.`
-				: `Write a results recap for last night's event: ${card}. Use ANALYSIS MODE. Call out who you were right and wrong about.`;
-
-		const result = await generateText({
-			model: openrouter(env.MODEL_ID),
-			stopWhen: stepCountIs(8),
-			tools: getTools(env),
-			system: buildSystemPrompt(),
-			messages: [{ role: 'user', content: prompt }],
-		});
-
-		const text = result.text.trim();
-		const reply = text.length > 3900 ? text.slice(0, 3897) + '...' : text;
-
-		if (!reply) {
-			console.error(`[announce] ${kind} generation returned empty text, skipping post`);
-			return;
+		// The card itself needs no model; if the briefs fail, still send the card.
+		let briefs: Briefs = {};
+		try {
+			briefs = await generateBriefs(kind, eventData, env);
+		} catch (err) {
+			console.error(`[announce] ${kind} briefs failed, sending card only: ${err instanceof Error ? err.message : String(err)}`);
 		}
 
-		await postMessage(env.SLACK_BOT_TOKEN, env.ANNOUNCE_CHANNEL_ID, reply);
+		const text = formatAnnouncement(eventData, kind, briefs);
+		const reply = text.length > 3900 ? text.slice(0, 3897) + '...' : text;
+
+		// Slack accepts a user ID as the channel and delivers it as a DM from the bot.
+		await postMessage(env.SLACK_BOT_TOKEN, env.ANNOUNCE_USER_ID, reply);
 
 		await env.FIGHTERS_KV.put(key, '1', { expirationTtl: 60 * 60 * 24 * 7 });
 	} catch (err) {

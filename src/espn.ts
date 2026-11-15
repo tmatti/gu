@@ -62,6 +62,7 @@ interface ScoreboardResponse {
     date: string;
     venues?: { fullName: string; address?: { city?: string; country?: string } }[];
     competitions: {
+      date?: string;
       type?: { abbreviation: string };
       status?: { type?: { state?: string; completed?: boolean } };
       competitors: {
