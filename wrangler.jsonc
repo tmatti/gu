@@ -13,8 +13,11 @@
 	// When unset, the scheduled announcements skip (see the guard in src/announce.ts).
 	// Cloudflare cron day-of-week is 1=Sunday..7=Saturday; day names avoid the ambiguity.
 	// Must stay byte-identical to PREVIEW_CRON/RECAP_CRON in src/announce.ts (dispatch matches the string).
+	// Scheduled preview/recap announcements are disabled. To re-enable, restore:
+	//   "crons": ["0 13 * * FRI", "0 14 * * SUN"]
+	// The explicit empty array removes the triggers from the deployed Worker on the next deploy.
 	"triggers": {
-		"crons": ["0 13 * * FRI", "0 14 * * SUN"],
+		"crons": [],
 	},
 	"kv_namespaces": [
 		{

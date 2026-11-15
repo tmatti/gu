@@ -79,7 +79,9 @@ The script reads the KV namespace IDs from `wrangler.jsonc` automatically. It ta
 
 ### Scheduled announcements
 
-Two Cloudflare Cron Triggers post to `ANNOUNCE_CHANNEL_ID` automatically:
+**Currently disabled**: `triggers.crons` in `wrangler.jsonc` is empty. Restore the two cron strings below to re-enable.
+
+When enabled, two Cloudflare Cron Triggers post to `ANNOUNCE_CHANNEL_ID` automatically:
 
 - `0 13 * * FRI` — Friday 13:00 UTC (~8-9am ET): fight-card preview for the upcoming weekend event
 - `0 14 * * SUN` — Sunday 14:00 UTC: results recap for the event that just happened

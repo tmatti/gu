@@ -136,8 +136,13 @@ describe('handleScheduled', () => {
 });
 
 describe('cron config', () => {
-	it('wrangler.jsonc crons stay byte-identical to the dispatch constants', () => {
+	// The announcements are currently disabled (empty crons). Any cron that is configured
+	// must still match a dispatch constant byte-for-byte, so re-enabling can't silently miss.
+	it('wrangler.jsonc crons are each byte-identical to a dispatch constant', () => {
 		const json = JSON.parse(wranglerRaw.replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1'));
-		expect(json.triggers.crons).toEqual([PREVIEW_CRON, RECAP_CRON]);
+		expect(Array.isArray(json.triggers.crons)).toBe(true);
+		for (const cron of json.triggers.crons) {
+			expect([PREVIEW_CRON, RECAP_CRON]).toContain(cron);
+		}
 	});
 });
